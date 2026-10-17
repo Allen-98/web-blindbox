@@ -1,0 +1,37 @@
+{
+  "version": "0.1.0",
+  "entry": "index.html",
+  "files": [
+    "index.html",
+    "styles.css",
+    "app.js",
+    "feedback.js",
+    "game-engine.js",
+    "legacy-engine.js",
+    "wallet.js",
+    "web.config",
+    "README.md",
+    "更新部署说明.md",
+    "THIRD-PARTY-NOTICES.md",
+    "runtime-manifest.json",
+    "docs/素材说明.md",
+    "vendor/phaser.min.js",
+    "vendor/PHASER-LICENSE.txt",
+    "assets/favicon.svg",
+    "assets/moon-scene.webp",
+    "assets/blindbox-hero.webp",
+    "assets/prize-items.webp",
+    "assets/rabbit-boat.webp",
+    "assets/moon.webp",
+    "assets/fish.webp",
+    "assets/rock.webp"
+  ],
+  "excluded": [
+    "tests/**",
+    "assets/*.png",
+    "vendor/phaser-official.tmp",
+    "../docs/legacy-index.html.txt",
+    "../app.js",
+    "../engine.js"
+  ]
+}
