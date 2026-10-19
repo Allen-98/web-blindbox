@@ -7,6 +7,7 @@ var ASSETS={lake:'assets/moon-scene.webp',boat:'assets/rabbit-boat.webp',moon:'a
 var els={},screens={},screen='home',wallet=Wallet.fresh(),round=null,scene=null,game=null,sceneReady=false,pending=false,resultKind=null,resultHandled=null,lastFocus=null,storage=null,storageWorks=true,activeFrameAt=null,mutexDBPromise=null;
 var reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 var collectionWallet=null,collectionCache=null;
+var exchangeIntent=null,shopHistoryWallet=null;
 function currentCollection(){if(collectionWallet!==wallet){collectionWallet=wallet;collectionCache=Wallet.collection(wallet);}return collectionCache;}
 function id(prefix){return prefix+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);}
 function text(el,value){if(el.textContent!==String(value))el.textContent=String(value);}
@@ -64,9 +65,10 @@ if(name==='fishing'&&game){requestAnimationFrame(function(){game.scale.refresh()
 }
 function renderHUD(){
 text(els.homeTickets,wallet.tickets);text(els.homeScore,wallet.totalScore);text(els.ticketBalance,wallet.tickets);text(els.blindboxTickets,wallet.tickets);text(els.blindboxScore,wallet.totalScore);
+text(els.homeBalance,wallet.scoreBalance);text(els.blindboxBalance,wallet.scoreBalance);els.openShop.disabled=pending;
 text(els.startFishing,'开始捞月 →');
-text(els.openBlindboxHome,wallet.blindRound?'继续本小局':wallet.tickets?'打开盲盒 · 1 张券':'先捞月，赢盲盒券');
-text(els.homeHint,wallet.blindRound?'本小局已兑换，可随时继续打开。':wallet.tickets?'券可以累积，每一张只兑换一小局。':'初始 0 张券，捞月胜利才会获得。');
+text(els.openBlindboxHome,wallet.blindRound?'继续本小局':wallet.tickets?'打开盲盒 · 1 张券':wallet.scoreBalance>=Wallet.TICKET_PRICE?'用积分兑换盲盒券':'先捞月，赢盲盒券');
+text(els.homeHint,wallet.blindRound?'本小局已兑换，可随时继续打开。':wallet.tickets?'券可以累积，每一张只兑换一小局。':wallet.scoreBalance>=Wallet.TICKET_PRICE?'积分已攒够，可到商店兑换盲盒券。':'捞月赢券，也可用 100 积分兑换 1 张券。');
 els.startFishing.disabled=pending;els.openBlindboxHome.disabled=pending;
 var collected=currentCollection();text(els.homeCollection,Box.TYPES.filter(function(type){return collected[type]>0;}).length+'/3');
 els.openRecords.disabled=pending;els.openCollection.disabled=pending;
@@ -87,15 +89,38 @@ var hint=round.hook.phase==='retracting'&&round.hook.carriedIds.length?'正在�
 text(els.aimHint,hint);
 }
 els.pauseButton.disabled=pending;els.backHome.disabled=pending;
+if(screen==='shop')renderShop();
 }
 function showOverlay(which){
 lastFocus=document.activeElement;
 els.pauseOverlay.hidden=which!=='pause';els.resultOverlay.hidden=which!=='result';
+els.exchangeOverlay.hidden=which!=='exchange';
 document.getElementById('app').inert=true;
-var button=which==='pause'?els.resumeButton:els.resultAction;requestAnimationFrame(function(){button.focus();});
+var button=which==='pause'?els.resumeButton:which==='exchange'?els.cancelExchange:els.resultAction;requestAnimationFrame(function(){button.focus();});
 }
-function hideOverlays(){els.pauseOverlay.hidden=true;els.resultOverlay.hidden=true;document.getElementById('app').inert=false;if(lastFocus&&lastFocus.isConnected&&!lastFocus.closest('[hidden]'))lastFocus.focus();}
-function modalOpen(){return !els.pauseOverlay.hidden||!els.resultOverlay.hidden;}
+function hideOverlays(){els.pauseOverlay.hidden=true;els.resultOverlay.hidden=true;els.exchangeOverlay.hidden=true;document.getElementById('app').inert=false;if(lastFocus&&lastFocus.isConnected&&!lastFocus.closest('[hidden]'))lastFocus.focus();}
+function modalOpen(){return !els.pauseOverlay.hidden||!els.resultOverlay.hidden||!els.exchangeOverlay.hidden;}
+function openShop(){if(pending)return;refreshWallet();hideOverlays();round=null;clearEffects();exchangeIntent=null;showScreen('shop');}
+function renderShop(){
+text(els.shopBalance,wallet.scoreBalance);text(els.shopTotal,wallet.totalScore);text(els.shopTickets,wallet.tickets);
+var enough=wallet.scoreBalance>=Wallet.TICKET_PRICE;
+els.exchangeButton.disabled=pending||!enough||!storageWorks;els.shopHome.disabled=pending;els.shopPlay.disabled=pending||(!wallet.tickets&&!wallet.blindRound);
+text(els.shopPlay,wallet.blindRound?'继续已兑换的盲盒小局':'去抽盲盒 · '+wallet.tickets+' 张券');
+text(els.shopHint,!storageWorks?'存档暂不可用，请恢复浏览器存储后再兑换。':enough?'每次兑换 1 张，确认后扣除 100 积分。':'还差 '+(Wallet.TICKET_PRICE-wallet.scoreBalance)+' 积分，捞月赢券、抽盲盒继续攒。');
+els.confirmExchange.disabled=pending||!enough||!storageWorks;els.cancelExchange.disabled=pending;
+text(els.exchangePreview,enough?'当前 '+wallet.scoreBalance+' 分 → 兑换后 '+(wallet.scoreBalance-Wallet.TICKET_PRICE)+' 分':'当前余额 '+wallet.scoreBalance+' 分，暂不足以兑换。');
+if(shopHistoryWallet!==wallet){shopHistoryWallet=wallet;els.exchangeHistory.replaceChildren();var history=wallet.exchanges.slice(-5).reverse();if(!history.length){var empty=document.createElement('li');empty.className='empty-exchanges';text(empty,'还没有兑换记录，攒够积分再来看看。');els.exchangeHistory.append(empty);}history.forEach(function(entry,index){var row=document.createElement('li'),title=document.createElement('span'),amount=document.createElement('b');text(title,'第 '+(wallet.exchanges.length-index)+' 次兑换 · 盲盒券 +1');text(amount,'−'+entry.cost+' 分');row.append(title,amount);els.exchangeHistory.append(row);});}
+}
+function requestExchange(){if(pending||!storageWorks||wallet.scoreBalance<Wallet.TICKET_PRICE)return;refreshWallet();renderShop();if(wallet.scoreBalance<Wallet.TICKET_PRICE)return;exchangeIntent=id('exchange');showOverlay('exchange');}
+function cancelExchange(){if(pending)return;exchangeIntent=null;hideOverlays();}
+async function confirmExchange(){
+if(pending||!exchangeIntent||els.exchangeOverlay.hidden)return;
+var intent=exchangeIntent;
+var result=await transaction(function(saved){return storageWorks?Wallet.exchangeTicket(saved,intent):{state:saved,accepted:false,reason:'storage'};});
+if(!result)return;exchangeIntent=null;hideOverlays();renderShop();
+if(result.accepted){Feedback.play('win');toast(storageWorks?'兑换成功，1 张盲盒券已存入钱包':'兑换未保存，请恢复存储后刷新确认余额');announce('消耗100积分，获得1张盲盒券');}
+else toast(result.reason==='insufficient'?'积分余额已更新，未扣分，请重新确认。':result.reason==='duplicate'?'这笔兑换已完成，没有重复扣分。':'暂时无法兑换，未扣分。');
+}
 function pauseGame(){
 if(!round||round.phase!=='playing'||screen!=='fishing'||pending)return;
 advanceRoundTo(performance.now());activeFrameAt=null;
@@ -287,7 +312,7 @@ if(pending)return;
 if(wallet.blindRound){hideOverlays();round=null;showScreen('blindbox');renderBlindbox();if(wallet.blindRound.phase==='result')showBlindboxResult();return;}
 var result=await transaction(function(saved){return Wallet.beginBox(saved,id('box'));});
 if(!result)return;
-if(!result.accepted&&result.reason==='empty'){hideOverlays();round=null;showScreen('home');toast('先捞回三颗月亮，赢 1 张盲盒券');els.startFishing.focus();return;}
+if(!result.accepted&&result.reason==='empty'){hideOverlays();round=null;if(wallet.scoreBalance>=Wallet.TICKET_PRICE){openShop();toast('积分已攒够，确认后可兑换 1 张券');}else{showScreen('home');toast('先捞回三颗月亮赢券，也可攒满100积分到商店兑换');els.startFishing.focus();}return;}
 hideOverlays();round=null;showScreen('blindbox');renderBlindbox();
 if(wallet.blindRound&&wallet.blindRound.phase==='result')showBlindboxResult();
 else if(result.accepted)toast('已用 1 张券兑换本小局');
@@ -302,7 +327,7 @@ if(result.accepted){Feedback.play(result.award?'win':'box');announce('打开盲�
 function showBlindboxResult(){
 var r=wallet.blindRound;if(!r||r.phase!=='result')return;
 resultKind='blindbox';var award=r.outcome;els.resultStats.hidden=true;
-text(els.resultKicker,award.tier);text(els.resultTitle,award.label);text(els.resultSymbol,'✦');text(els.resultDetail,'+'+award.score+' 分已入账 · '+itemNames[award.type]+'已收入图鉴（累计 '+Wallet.collection(wallet)[award.type]+' 次）');text(els.resultAction,wallet.tickets?'再用 1 张券开一局':'继续捞月，赢盲盒券');text(els.resultSecondary,'回首页');showOverlay('result');announce(award.label+'，获得'+award.score+'分');
+text(els.resultKicker,award.tier);text(els.resultTitle,award.label);text(els.resultSymbol,'✦');text(els.resultDetail,'+'+award.score+' 分已入账 · 可用 '+wallet.scoreBalance+' 分 / 累计 '+wallet.totalScore+' 分 · '+itemNames[award.type]+'已收入图鉴（累计 '+Wallet.collection(wallet)[award.type]+' 次）');text(els.resultAction,wallet.tickets?'再用 1 张券开一局':'继续捞月，赢盲盒券');text(els.resultSecondary,'回首页');showOverlay('result');announce(award.label+'，获得'+award.score+'分');
 }
 async function settleBox(destination){
 var result=await transaction(function(saved){return{state:Wallet.finishBox(saved),accepted:true};});if(!result)return;
@@ -325,10 +350,13 @@ function collect(){
 ['home-screen','fishing-screen','blindbox-screen','home-tickets','home-score','home-hint','storage-note','start-fishing','open-blindbox-home','ticket-balance','timer','collected','pause-button','fire-button','back-home','blindbox-tickets','blindbox-score','count-rabbit','count-branch','count-mooncake','blindbox-board','box-home','pause-overlay','resume-button','pause-home','result-overlay','result-symbol','result-kicker','result-title','result-detail','result-action','result-secondary','toast','live-message'].forEach(function(name){els[name.replace(/-([a-z])/g,function(_,c){return c.toUpperCase();})]=document.getElementById(name);});
 ['release-button','aim-hint','sound-button','pause-sound','open-records','open-collection','home-collection','journal-screen','journal-home','records-tab','collection-tab','records-panel','collection-panel','personal-wins','personal-time','personal-shots','personal-accuracy','personal-summary','recent-records','collection-summary','collection-cards','result-stats'].forEach(function(name){els[name.replace(/-([a-z])/g,function(_,c){return c.toUpperCase();})]=document.getElementById(name);});
 screens={home:els.homeScreen,fishing:els.fishingScreen,blindbox:els.blindboxScreen,journal:els.journalScreen};
+['home-balance','blindbox-balance','open-shop','shop-screen','shop-home','shop-balance','shop-total','shop-tickets','shop-play','shop-hint','exchange-button','exchange-history','exchange-overlay','exchange-preview','confirm-exchange','cancel-exchange'].forEach(function(name){els[name.replace(/-([a-z])/g,function(_,c){return c.toUpperCase();})]=document.getElementById(name);});
+screens.shop=els.shopScreen;
 }
 function bind(){
 els.startFishing.addEventListener('click',startFishing);els.openBlindboxHome.addEventListener('click',beginBlindbox);els.fireButton.addEventListener('click',fireHook);els.pauseButton.addEventListener('click',pauseGame);els.backHome.addEventListener('click',pauseGame);els.resumeButton.addEventListener('click',resumeGame);els.pauseHome.addEventListener('click',exitFishing);els.resultAction.addEventListener('click',resultAction);els.resultSecondary.addEventListener('click',resultSecondary);
 els.releaseButton.addEventListener('click',releaseHook);els.openRecords.addEventListener('click',function(){openJournal('records');});els.openCollection.addEventListener('click',function(){openJournal('collection');});els.recordsTab.addEventListener('click',function(){renderJournal('records');});els.collectionTab.addEventListener('click',function(){renderJournal('collection');});els.journalHome.addEventListener('click',function(){showScreen('home');});
+els.openShop.addEventListener('click',openShop);els.shopHome.addEventListener('click',function(){if(!pending)showScreen('home');});els.shopPlay.addEventListener('click',beginBlindbox);els.exchangeButton.addEventListener('click',requestExchange);els.confirmExchange.addEventListener('click',confirmExchange);els.cancelExchange.addEventListener('click',cancelExchange);
 [els.soundButton,els.pauseSound].forEach(function(button){button.addEventListener('click',function(){Feedback.toggle();renderHUD();});});
 document.addEventListener('pointerdown',function(){Feedback.unlock();});
 els.boxHome.addEventListener('click',function(){if(!pending)showScreen('home');});
@@ -337,7 +365,8 @@ document.addEventListener('keydown',function(event){
 if(event.code==='Space'&&screen==='fishing'&&!modalOpen()){event.preventDefault();if(!event.repeat)fireHook();}
 if(event.code==='Escape'&&screen==='fishing'){if(!els.pauseOverlay.hidden)resumeGame();else if(!modalOpen())pauseGame();}
 if(event.code==='KeyR'&&screen==='fishing'&&!modalOpen()&&!event.repeat){event.preventDefault();releaseHook();}
-if(event.code==='Tab'&&modalOpen()){var overlay=!els.pauseOverlay.hidden?els.pauseOverlay:els.resultOverlay;var buttons=Array.from(overlay.querySelectorAll('button'));var first=buttons[0],last=buttons[buttons.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}
+if(event.code==='Escape'&&!els.exchangeOverlay.hidden)cancelExchange();
+if(event.code==='Tab'&&modalOpen()){var overlay=!els.pauseOverlay.hidden?els.pauseOverlay:!els.exchangeOverlay.hidden?els.exchangeOverlay:els.resultOverlay;var buttons=Array.from(overlay.querySelectorAll('button:not(:disabled)'));var first=buttons[0],last=buttons[buttons.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}
 });
 document.addEventListener('visibilitychange',function(){if(document.hidden)pauseGame();});
 window.addEventListener('pagehide',function(){pauseGame();activeFrameAt=null;});

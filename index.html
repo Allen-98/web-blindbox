@@ -6,17 +6,17 @@
 <meta name="theme-color" content="#081e3e">
 <title>水中捞月 · 月兔桂香</title>
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=0.1.0">
+<link rel="stylesheet" href="styles.css?v=0.2.0">
 </head>
 <body>
 <main id="app">
 <section id="home-screen" class="screen home-screen">
 <div class="home-art"><img src="assets/blindbox-hero.webp" alt="金月映湖，玉兔与中秋盲盒" width="650" height="650"></div>
 <div class="home-copy"><p class="eyebrow">月兔桂香</p><h1>水中捞月</h1><p class="intro">60 秒捞回三颗月亮<br>赢一张券，开一小局盲盒</p></div>
-<p class="home-wallet">盲盒券 <b id="home-tickets">0</b> 张 <span>·</span> 总分 <b id="home-score">0</b></p>
+<p class="home-wallet">盲盒券 <b id="home-tickets">0</b> 张 <span>·</span> 可用积分 <b id="home-balance">0</b><small class="lifetime-score">累计积分 <b id="home-score">0</b></small></p>
 <div class="home-actions"><button id="start-fishing" class="primary-button">开始捞月 <span aria-hidden="true">→</span></button><button id="open-blindbox-home" class="secondary-button">打开盲盒 · 1 张券</button></div>
-<p id="home-hint" class="micro-copy">初始 0 张券，捞月胜利才会获得。</p>
-<nav class="home-journal" aria-label="月下手记"><button id="open-records" class="quiet-button">我的成绩</button><button id="open-collection" class="quiet-button">收藏图鉴 <span id="home-collection">0/3</span></button></nav>
+<p id="home-hint" class="micro-copy">捞月赢券，也可用 100 积分兑换 1 张券。</p>
+<nav class="home-journal" aria-label="月下手记"><button id="open-shop" class="quiet-button">积分商店</button><button id="open-records" class="quiet-button">我的成绩</button><button id="open-collection" class="quiet-button">收藏图鉴 <span id="home-collection">0/3</span></button></nav>
 <button id="sound-button" class="sound-button quiet-button" aria-pressed="true">音效：开</button>
 </section>
 <section id="fishing-screen" class="screen fishing-screen" hidden>
@@ -30,11 +30,20 @@
 </section>
 <section id="blindbox-screen" class="screen blindbox-screen" hidden>
 <header class="topbar"><div><p class="eyebrow">月兔桂香</p><h2>中秋盲盒</h2></div><button id="box-home" class="quiet-button">回首页</button></header>
-<div class="box-wallet"><span>券 <b id="blindbox-tickets">0</b> 张</span><span>总分 <b id="blindbox-score">0</b></span></div>
+<div class="box-wallet"><span>券 <b id="blindbox-tickets">0</b> 张</span><span>可用 <b id="blindbox-balance">0</b> 分 · 累计 <b id="blindbox-score">0</b> 分</span></div>
 <p class="box-tip">任选盲盒，集齐三个相同就获奖</p>
 <div class="collection-strip"><span><i class="mini-icon rabbit-icon" aria-hidden="true"></i>玉兔 <b id="count-rabbit">0/3</b><small>50 分</small></span><span><i class="mini-icon branch-icon" aria-hidden="true"></i>桂枝 <b id="count-branch">0/3</b><small>30 分</small></span><span><i class="mini-icon mooncake-icon" aria-hidden="true"></i>月饼 <b id="count-mooncake">0/3</b><small>10 分</small></span></div>
 <div id="blindbox-board" class="blindbox-board" aria-label="三列四行，共十二个盲盒"></div>
 <p class="micro-copy box-footnote">这一小局已兑换；回首页或刷新都能继续。</p>
+</section>
+<section id="shop-screen" class="screen shop-screen" hidden>
+<header class="topbar"><div><p class="eyebrow">月兔桂香 · 月下小铺</p><h2>积分商店</h2></div><button id="shop-home" class="quiet-button">回首页</button></header>
+<p class="shop-intro">把攒下的好运，再拆成一份惊喜。</p>
+<div class="shop-balances"><div><span>可用积分</span><strong id="shop-balance">0</strong><small>兑换从这里扣除</small></div><div><span>累计积分</span><strong id="shop-total">0</strong><small>历史成绩，消费不减少</small></div><div><span>盲盒券</span><strong id="shop-tickets">0</strong><small>每张开启一小局</small></div></div>
+<article class="shop-product"><div class="ticket-art" aria-hidden="true"><span>月兔桂香</span><b>盲盒券</b><small>壹张 · 开一局惊喜</small></div><div class="shop-product-copy"><p class="eyebrow">月下好礼</p><h3>再开一局盲盒</h3><p>兑换 1 张券，开启一小局 12 盒盲盒。<br>也可以先存着，等想玩时再用。</p><p class="shop-price"><b>100</b> 可用积分 / 张</p><button id="exchange-button" class="primary-button">兑换 1 张盲盒券</button><p id="shop-hint" class="micro-copy" role="status"></p></div></article>
+<button id="shop-play" class="secondary-button shop-play">去抽盲盒</button>
+<div class="shop-history"><h3>最近兑换</h3><ol id="exchange-history"></ol></div>
+<p class="micro-copy shop-footnote">盲盒获奖同时增加累计积分与可用积分；兑换只消耗可用积分。券和积分保存在当前浏览器。</p>
 </section>
 <section id="journal-screen" class="screen journal-screen" hidden>
 <header class="topbar"><div><p class="eyebrow">月兔桂香 · 月下手记</p><h2>这一湖的收获</h2></div><button id="journal-home" class="quiet-button">回首页</button></header>
@@ -47,12 +56,12 @@
 <div id="pause-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pause-title"><div class="modal-card"><p class="eyebrow">月色暂停</p><h2 id="pause-title">先歇一会儿</h2><p>倒计时与钩子都已暂停。<br>结束本局将不获得盲盒券。</p><button id="resume-button" class="primary-button">继续捞月</button><button id="pause-sound" class="quiet-button" aria-pressed="true">音效：开</button><button id="pause-home" class="secondary-button">结束本局，回首页</button></div></div>
 <div id="result-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="result-title"><div class="modal-card"><div id="result-symbol" class="result-symbol" aria-hidden="true">☾</div><p id="result-kicker" class="eyebrow"></p><h2 id="result-title"></h2><p id="result-detail"></p><div id="result-stats" class="result-stats" hidden></div><button id="result-action" class="primary-button"></button><button id="result-secondary" class="secondary-button"></button></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="exchange-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="exchange-title"><div class="modal-card"><p class="eyebrow">月下小铺</p><h2 id="exchange-title">兑换盲盒券</h2><p>使用 <strong>100 可用积分</strong><br>兑换 <strong>1 张盲盒券</strong>，累计积分保持不变。</p><p id="exchange-preview"></p><button id="confirm-exchange" class="primary-button">确认兑换 · 100 积分</button><button id="cancel-exchange" class="secondary-button">再想一想</button></div></div>
 <p id="live-message" class="sr-only" role="status" aria-live="polite"></p>
 <script src="vendor/phaser.min.js?v=3.90.0"></script>
-<script src="game-engine.js?v=0.1.0"></script>
-<script src="legacy-engine.js?v=0.1.0"></script>
-<script src="wallet.js?v=0.1.0"></script>
-<script src="feedback.js?v=0.1.0"></script>
-<script src="app.js?v=0.1.0"></script>
+<script src="game-engine.js?v=0.2.0"></script>
+<script src="legacy-engine.js?v=0.2.0"></script>
+<script src="wallet.js?v=0.2.0"></script>
+<script src="feedback.js?v=0.2.0"></script>
+<script src="app.js?v=0.2.0"></script>
 </body></html>
-

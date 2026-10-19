@@ -3,7 +3,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const E=require('../game-engine.js'),W=require('../wallet.js'),B=require('../legacy-engine.js');
 fs.mkdirSync(path.join(__dirname,'output'),{recursive:true});
-const result={version:'0.1.0',passed:[],failed:[]};
+const result={version:fs.readFileSync(path.join(__dirname,'..','VERSION'),'utf8').trim(),passed:[],failed:[]};
 function test(name,fn){try{fn();result.passed.push(name);}catch(error){result.failed.push({name,error:error.stack});}}
 const copy=v=>JSON.parse(JSON.stringify(v));
 function storage(value){let data=JSON.stringify(value);return{getItem(){return data;},setItem(key,value){data=value;}};}
@@ -38,4 +38,3 @@ test('collection counts awards rather than individual opened pictures and repeat
 test('all feature fields survive persistence and older absent fields are accepted',()=>{const state=W.completeFishing(oldSave(),recordRound('persist')).state;const saved=storage(null);assert.equal(W.save(saved,state),true);assert.deepEqual(W.load(saved).state,state);assert.equal(W.valid(oldSave()),true);assert.equal(W.KEY,'moonfishing-save-v2');});
 fs.writeFileSync(path.join(__dirname,'output','iteration-engine-results.json'),JSON.stringify(result,null,2));
 console.log(JSON.stringify({passed:result.passed.length,failed:result.failed.length,failures:result.failed},null,2));if(result.failed.length)process.exitCode=1;
-

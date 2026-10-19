@@ -1,1 +1,12 @@
-{"name":"web-blindbox","version":"0.1.0","private":true,"description":"水中捞月与中秋盲盒网页小游戏","scripts":{"test":"node tests/iteration_engine_tests.cjs"}}
+{
+  "name": "web-blindbox",
+  "version": "0.2.0",
+  "private": true,
+  "description": "水中捞月与中秋盲盒网页小游戏",
+  "scripts": {
+    "test": "node tests/iteration_engine_tests.cjs && node tests/shop_engine_tests.cjs",
+    "test:browser": "node tests/shop_browser_tests.cjs",
+    "start": "node tests/serve.cjs"
+  },
+  "devDependencies": {"playwright": "1.62.1"}
+}
